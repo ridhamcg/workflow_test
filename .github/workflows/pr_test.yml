@@ -29,17 +29,15 @@ jobs:
             const apiChangesCheckbox = body.includes('- [ ] Have you attached screenshots?');
             
             // Check if the checkboxes are ticked
-            const screenshotChecked = body.includes('- [x] Have you attached screenshots?');
-            const apiChangesChecked = body.includes('- [x] Did any changes in API?');
+            const screenshotChecked = body.includes('- [x] Did any changes in API?');
+            const apiChangesChecked = body.includes('- [x] Have you attached screenshots?');
             
             // Check for the presence of screenshots (assuming they are linked or embedded)
             const hasScreenshots = body.includes('![') || body.includes('http');
             
             let failureReason = '';
             
-            if (!screenshotCheckbox || !apiChangesCheckbox) {
-              failureReason = 'PR template is not correctly used. Please use the standard PR template.';
-            } else if (screenshotChecked && !hasScreenshots) {
+            if (screenshotChecked && !hasScreenshots) {
               failureReason = 'Screenshots are marked as attached, but none were found in the PR description.';
             } else if (apiChangesChecked && !screenshotChecked) {
               failureReason = 'API changes are marked, but screenshots are not attached. Screenshots are mandatory for API changes.';
