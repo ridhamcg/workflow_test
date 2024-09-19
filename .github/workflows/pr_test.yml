@@ -48,8 +48,10 @@ jobs:
             
             if (failureReason) {
               core.setFailed(failureReason);
+              core.setOutput('error-message', failureReason);
             } else {
               console.log('All checks passed successfully!');
+              core.setOutput('error-message', '');
             }
 
       - name: PR Check Result
@@ -58,27 +60,55 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const fs = require('fs');
+            
+            let errorMessage = '${{ steps.pr-check.outputs.error-message }}';
+            if (!errorMessage) {
+              // If error message is not set, try to get it from the job output
+              try {
+                const jobOutput = fs.readFileSync(process.env.GITHUB_OUTPUT, 'utf8');
+                const errorLine = jobOutput.split('\n').find(line => line.startsWith('error-message='));
+                if (errorLine) {
+                  errorMessage = errorLine.split('=')[1];
+                }
+              } catch (error) {
+                console.error('Failed to read job output:', error.message);
+              }
+            }
+            
+            // If we still don't have an error message, use a default one
+            if (!errorMessage) {
+              errorMessage = 'An unknown error occurred during PR checks. Please review the workflow logs for more details.';
+            }
+            
             const checkConclusion = '${{ job.status }}' === 'success' ? 'success' : 'failure';
             const checkOutput = checkConclusion === 'success' 
               ? { title: 'PR Checks Passed', summary: 'All PR checks have passed successfully.' }
-              : { title: 'PR Checks Failed', summary: '${{ steps.pr-check.outputs.error-message || 'PR checks have failed. Please review the workflow for more details.' }}' };
+              : { title: 'PR Checks Failed', summary: errorMessage };
             
-            await github.rest.checks.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'PR Checks',
-              head_sha: context.sha,
-              status: 'completed',
-              conclusion: checkConclusion,
-              output: checkOutput
-            });
-            
-            if (checkConclusion === 'failure') {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
+            try {
+              await github.rest.checks.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: 'PR checks failed. Please address the following issues before merging:\n\n' + 
-                      '${{ steps.pr-check.outputs.error-message || 'Check the workflow logs for more details.' }}'
+                name: 'PR Checks',
+                head_sha: context.sha,
+                status: 'completed',
+                conclusion: checkConclusion,
+                output: checkOutput
               });
+            } catch (error) {
+              console.error('Failed to create check:', error.message);
+            }
+            
+            if (checkConclusion === 'failure') {
+              try {
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `PR checks failed. Please address the following issues before merging:\n\n${errorMessage}`
+                });
+              } catch (error) {
+                console.error('Failed to create comment:', error.message);
+              }
             }
