@@ -1,23 +1,68 @@
-name: 'PR Check'
+name: Pull Request Checks
 
 on:
   pull_request:
-    types: [opened, edited, synchronize]
+    types: [opened, synchronize, reopened, edited]
 
 jobs:
-  pr-check:
+  pr-checks:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 'Check for Images in PR Description'
-        id: image-check
-        run: |
-          echo "PR Description: ${{ github.event.pull_request.body }}"
-          # Check for image URLs in the PR description
-          if [[ "${{ github.event.pull_request.body }}" =~ !\[[^]]*\]\(\s*(https:\/\/github\.com\/.*\.(png|jpg|jpeg|gif|bmp))\s*\) ]]; then
-            echo "Image (screenshot) found in the PR description."
-          else
-            echo "No image (screenshot) found in the PR description."
-            exit 1
-          fi
-        shell: bash
+      - uses: actions/checkout@v2
+
+      - name: Check PR description
+        id: pr-check
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            const body = pullRequest.body;
+            
+            // Check if the PR description contains the required checkboxes
+            const screenshotCheckbox = body.includes('- [ ] Screenshots attached');
+            const apiChangesCheckbox = body.includes('- [ ] API changes');
+            
+            // Check if the checkboxes are ticked
+            const screenshotChecked = body.includes('- [x] Screenshots attached');
+            const apiChangesChecked = body.includes('- [x] API changes');
+            
+            // Check for the presence of screenshots (assuming they are linked or embedded)
+            const hasScreenshots = body.includes('![') || body.includes('http');
+            
+            let failureReason = '';
+            
+            if (!screenshotCheckbox || !apiChangesCheckbox) {
+              failureReason = 'PR template is not correctly used. Please use the standard PR template.';
+            } else if (screenshotChecked && !hasScreenshots) {
+              failureReason = 'Screenshots are marked as attached, but none were found in the PR description.';
+            } else if (apiChangesChecked && !screenshotChecked) {
+              failureReason = 'API changes are marked, but screenshots are not attached. Screenshots are mandatory for API changes.';
+            } else if (apiChangesChecked && screenshotChecked && !hasScreenshots) {
+              failureReason = 'API changes and screenshots are marked, but no screenshots were found in the PR description.';
+            }
+            
+            if (failureReason) {
+              core.setFailed(failureReason);
+            } else {
+              console.log('All checks passed successfully!');
+            }
+
+      - name: PR Check Result
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'PR checks failed. Please address the following issues before merging:\n\n' + 
+                    '${{ steps.pr-check.outputs.error-message }}'
+            })
