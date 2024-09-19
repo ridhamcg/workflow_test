@@ -24,13 +24,9 @@ jobs:
             
             const body = pullRequest.body;
             
-            // Check if the PR description contains the required checkboxes
-            const screenshotCheckbox = body.includes('- [ ] Did any changes in API?');
-            const apiChangesCheckbox = body.includes('- [ ] Have you attached screenshots?');
-            
             // Check if the checkboxes are ticked
-            const screenshotChecked = body.includes('- [x] Did any changes in API?');
-            const apiChangesChecked = body.includes('- [x] Have you attached screenshots?');
+            const apiChangesChecked = body.includes('- [x] Did any changes in API?');
+            const screenshotChecked = body.includes('- [x] Have you attached screenshots?');
             
             // Check for the presence of screenshots (assuming they are linked or embedded)
             const hasScreenshots = body.includes('![') || body.includes('http');
@@ -52,15 +48,32 @@ jobs:
             }
 
       - name: PR Check Result
-        if: failure()
+        if: always()
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const checkConclusion = '${{ job.status }}' === 'success' ? 'success' : 'failure';
+            const checkOutput = checkConclusion === 'success' 
+              ? { title: 'PR Checks Passed', summary: 'All PR checks have passed successfully.' }
+              : { title: 'PR Checks Failed', summary: '${{ steps.pr-check.outputs.error-message || 'PR checks have failed. Please review the workflow for more details.' }}' };
+            
+            await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'PR checks failed. Please address the following issues before merging:\n\n' + 
-                    '${{ steps.pr-check.outputs.error-message }}'
-            })
+              name: 'PR Checks',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: checkConclusion,
+              output: checkOutput
+            });
+            
+            if (checkConclusion === 'failure') {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: 'PR checks failed. Please address the following issues before merging:\n\n' + 
+                      '${{ steps.pr-check.outputs.error-message || 'Check the workflow logs for more details.' }}'
+              });
+            }
