@@ -25,12 +25,12 @@ jobs:
             const body = pullRequest.body;
             
             // Check if the PR description contains the required checkboxes
-            const screenshotCheckbox = body.includes('- [ ] Screenshots attached');
-            const apiChangesCheckbox = body.includes('- [ ] API changes');
+            const screenshotCheckbox = body.includes('- [ ] Have you attached screenshots?');
+            const apiChangesCheckbox = body.includes('- [ ] Did any changes in API?');
             
             // Check if the checkboxes are ticked
-            const screenshotChecked = body.includes('- [x] Screenshots attached');
-            const apiChangesChecked = body.includes('- [x] API changes');
+            const screenshotChecked = body.includes('- [x] Have you attached screenshots?');
+            const apiChangesChecked = body.includes('- [x] Did any changes in API?');
             
             // Check for the presence of screenshots (assuming they are linked or embedded)
             const hasScreenshots = body.includes('![') || body.includes('http');
