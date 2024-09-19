@@ -9,18 +9,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 'Check for Screenshots in PR Description'
-        id: screenshot-check
+      - name: 'Check for Images in PR Description'
+        id: image-check
         run: |
           echo "PR Description: ${{ github.event.pull_request.body }}"
-          if [[ "${{ github.event.pull_request.body }}" != *"![Screenshot]"* ]]; then
-            echo "No screenshots found in the PR description."
+          # Check for image URLs in the PR description
+          if ! [[ "${{ github.event.pull_request.body }}" =~ !\[[^]]*\]\((http[^)]+\.(png|jpg|jpeg|gif|bmp))\) ]]; then
+            echo "No image (screenshot) found in the PR description."
             exit 1
           fi
         shell: bash
 
-      - name: 'Fail if screenshot check fails'
+      - name: 'Fail if image check fails'
         if: failure()
         run: |
-          echo "PR does not meet the requirements. Please add screenshots to the PR description."
+          echo "PR does not meet the requirements. Please attach a proper screenshot to the PR description."
           exit 1
