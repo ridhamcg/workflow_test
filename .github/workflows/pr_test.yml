@@ -14,14 +14,10 @@ jobs:
         run: |
           echo "PR Description: ${{ github.event.pull_request.body }}"
           # Check for image URLs in the PR description
-          if ! [[ "${{ github.event.pull_request.body }}" =~ !\[[^]]*\]\((http[^)]+\.(png|jpg|jpeg|gif|bmp))\) ]]; then
+          if [[ "${{ github.event.pull_request.body }}" =~ !\[[^]]*\]\(\s*(https:\/\/github\.com\/.*\.(png|jpg|jpeg|gif|bmp))\s*\) ]]; then
+            echo "Image (screenshot) found in the PR description."
+          else
             echo "No image (screenshot) found in the PR description."
             exit 1
           fi
         shell: bash
-
-      - name: 'Fail if image check fails'
-        if: failure()
-        run: |
-          echo "PR does not meet the requirements. Please attach a proper screenshot to the PR description."
-          exit 1
