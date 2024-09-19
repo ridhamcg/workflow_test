@@ -1,0 +1,23 @@
+name: 'PR Check'
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  pr-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Check for Images in PR Description'
+        id: image-check
+        run: |
+          echo "PR Description: ${{ github.event.pull_request.body }}"
+          # Check for image URLs in the PR description
+          if [[ "${{ github.event.pull_request.body }}" =~ !\[[^]]*\]\(\s*(https:\/\/github\.com\/.*\.(png|jpg|jpeg|gif|bmp))\s*\) ]]; then
+            echo "Image (screenshot) found in the PR description."
+          else
+            echo "No image (screenshot) found in the PR description."
+            exit 1
+          fi
+        shell: bash
