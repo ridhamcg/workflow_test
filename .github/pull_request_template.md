@@ -2,8 +2,8 @@
 [Provide a brief description of the changes in this PR]
 
 ## Checklist
-- [ ] Did any changes in API?
-- [ ] Have you attached screenshots?
+- [ ] This PR includes API changes.
+- [ ] Screenshots are attached.
 
 ## Screenshots
 [If applicable, add screenshots of your changes]

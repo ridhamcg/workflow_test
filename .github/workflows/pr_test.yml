@@ -30,8 +30,8 @@ jobs:
             const body = pullRequest.body;
             
             // Check if the checkboxes are ticked
-            const apiChangesChecked = body.includes('- [x] Did any changes in API?');
-            const screenshotChecked = body.includes('- [x] Have you attached screenshots?');
+            const apiChangesChecked = body.includes('- [x] This PR includes API changes.');
+            const screenshotChecked = body.includes('- [x] Screenshots are attached.');
             
             // Check for the presence of screenshots (assuming they are linked or embedded)
             const hasScreenshots = body.includes('![') || body.includes('http');
@@ -98,17 +98,4 @@ jobs:
               });
             } catch (error) {
               console.error('Failed to create check:', error.message);
-            }
-            
-            if (checkConclusion === 'failure') {
-              try {
-                await github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: `PR checks failed. Please address the following issues before merging:\n\n${errorMessage}`
-                });
-              } catch (error) {
-                console.error('Failed to create comment:', error.message);
-              }
             }
